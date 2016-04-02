@@ -11,7 +11,7 @@ Pod::Spec.new do |s|
   s.requires_arc    = false
   
   #s.source_files = 'src/**/*.{h,c}'
-  s.source_files = 'src/*'
+  #s.source_files = 'src/*'
 
   s.subspec 'dec' do |ss|
     ss.source_files = 'dec/*.{h.c}'
