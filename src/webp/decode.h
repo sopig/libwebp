@@ -197,10 +197,7 @@ struct WebPYUVABuffer {              // view as YUVA
 struct WebPDecBuffer {
   WEBP_CSP_MODE colorspace;  // Colorspace.
   int width, height;         // Dimensions.
-  int is_external_memory;    // If non-zero, 'internal_memory' pointer is not
-                             // used. If value is '2' or more, the external
-                             // memory is considered 'slow' and multiple
-                             // read/write will be avoided.
+  int is_external_memory;    // If true, 'internal_memory' pointer is not used.
   union {
     WebPRGBABuffer RGBA;
     WebPYUVABuffer YUVA;
@@ -208,7 +205,7 @@ struct WebPDecBuffer {
   uint32_t       pad[4];     // padding for later use
 
   uint8_t* private_memory;   // Internally allocated memory (only when
-                             // is_external_memory is 0). Should not be used
+                             // is_external_memory is false). Should not be used
                              // externally, but accessed via the buffer union.
 };
 
@@ -272,7 +269,7 @@ typedef enum VP8StatusCode {
 // that of the returned WebPIDecoder object.
 // The supplied 'output_buffer' content MUST NOT be changed between calls to
 // WebPIAppend() or WebPIUpdate() unless 'output_buffer.is_external_memory' is
-// not set to 0. In such a case, it is allowed to modify the pointers, size and
+// set to 1. In such a case, it is allowed to modify the pointers, size and
 // stride of output_buffer.u.RGBA or output_buffer.u.YUVA, provided they remain
 // within valid bounds.
 // All other fields of WebPDecBuffer MUST remain constant between calls.

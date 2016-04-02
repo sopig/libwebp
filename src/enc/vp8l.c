@@ -824,8 +824,7 @@ static WebPEncodingError EncodeImageInternal(VP8LBitWriter* const bw,
                                              VP8LHashChain* const hash_chain,
                                              VP8LBackwardRefs refs_array[2],
                                              int width, int height, int quality,
-                                             int low_effort,
-                                             int use_cache, int* cache_bits,
+                                             int low_effort, int* cache_bits,
                                              int histogram_bits,
                                              size_t init_byte_position,
                                              int* const hdr_size,
@@ -857,7 +856,7 @@ static WebPEncodingError EncodeImageInternal(VP8LBitWriter* const bw,
     goto Error;
   }
 
-  *cache_bits = use_cache ? MAX_COLOR_CACHE_BITS : 0;
+  *cache_bits = MAX_COLOR_CACHE_BITS;
   // 'best_refs' is the reference to the best backward refs and points to one
   // of refs_array[0] or refs_array[1].
   // Calculate backward references from ARGB image.
@@ -1115,12 +1114,6 @@ static WebPEncodingError WriteImage(const WebPPicture* const pic,
 
 // -----------------------------------------------------------------------------
 
-static void ClearTransformBuffer(VP8LEncoder* const enc) {
-  WebPSafeFree(enc->transform_mem_);
-  enc->transform_mem_ = NULL;
-  enc->transform_mem_size_ = 0;
-}
-
 // Allocates the memory for argb (W x H) buffer, 2 rows of context for
 // prediction and transform data.
 // Flags influencing the memory allocated:
@@ -1129,41 +1122,41 @@ static void ClearTransformBuffer(VP8LEncoder* const enc) {
 static WebPEncodingError AllocateTransformBuffer(VP8LEncoder* const enc,
                                                  int width, int height) {
   WebPEncodingError err = VP8_ENC_OK;
-  const int tile_size = 1 << enc->transform_bits_;
-  const uint64_t image_size = width * height;
-  // Ensure enough size for tiles, as well as for two scanlines and two
-  // extra pixels for CopyImageWithPrediction.
-  const uint64_t argb_scratch_size =
-      enc->use_predict_ ? tile_size * width + width + 2 : 0;
-  const int transform_data_size =
-      (enc->use_predict_ || enc->use_cross_color_)
-          ? VP8LSubSampleSize(width, enc->transform_bits_) *
-            VP8LSubSampleSize(height, enc->transform_bits_)
-          : 0;
-  const uint64_t mem_size =
-      image_size + WEBP_ALIGN_CST +
-      argb_scratch_size + WEBP_ALIGN_CST +
-      (uint64_t)transform_data_size;
-  uint32_t* mem = enc->transform_mem_;
-  if (mem == NULL || mem_size > enc->transform_mem_size_) {
-    ClearTransformBuffer(enc);
-    mem = (uint32_t*)WebPSafeMalloc(mem_size, sizeof(*mem));
+  if (enc->argb_ == NULL) {
+    const int tile_size = 1 << enc->transform_bits_;
+    const uint64_t image_size = width * height;
+    // Ensure enough size for tiles, as well as for two scanlines and two
+    // extra pixels for CopyImageWithPrediction.
+    const uint64_t argb_scratch_size =
+        enc->use_predict_ ? tile_size * width + width + 2 : 0;
+    const int transform_data_size =
+        (enc->use_predict_ || enc->use_cross_color_)
+            ? VP8LSubSampleSize(width, enc->transform_bits_) *
+              VP8LSubSampleSize(height, enc->transform_bits_)
+            : 0;
+    const uint64_t total_size =
+        image_size + WEBP_ALIGN_CST +
+        argb_scratch_size + WEBP_ALIGN_CST +
+        (uint64_t)transform_data_size;
+    uint32_t* mem = (uint32_t*)WebPSafeMalloc(total_size, sizeof(*mem));
     if (mem == NULL) {
       err = VP8_ENC_ERROR_OUT_OF_MEMORY;
       goto Error;
     }
-    enc->transform_mem_ = mem;
-    enc->transform_mem_size_ = (size_t)mem_size;
+    enc->argb_ = mem;
+    mem = (uint32_t*)WEBP_ALIGN(mem + image_size);
+    enc->argb_scratch_ = mem;
+    mem = (uint32_t*)WEBP_ALIGN(mem + argb_scratch_size);
+    enc->transform_data_ = mem;
+    enc->current_width_ = width;
   }
-  enc->argb_ = mem;
-  mem = (uint32_t*)WEBP_ALIGN(mem + image_size);
-  enc->argb_scratch_ = mem;
-  mem = (uint32_t*)WEBP_ALIGN(mem + argb_scratch_size);
-  enc->transform_data_ = mem;
-
-  enc->current_width_ = width;
  Error:
   return err;
+}
+
+static void ClearTransformBuffer(VP8LEncoder* const enc) {
+  WebPSafeFree(enc->argb_);
+  enc->argb_ = NULL;
 }
 
 static WebPEncodingError MakeInputImageCopy(VP8LEncoder* const enc) {
@@ -1385,7 +1378,7 @@ static void VP8LEncoderDelete(VP8LEncoder* enc) {
 
 WebPEncodingError VP8LEncodeStream(const WebPConfig* const config,
                                    const WebPPicture* const picture,
-                                   VP8LBitWriter* const bw, int use_cache) {
+                                   VP8LBitWriter* const bw) {
   WebPEncodingError err = VP8_ENC_OK;
   const int quality = (int)config->quality;
   const int low_effort = (config->method == 0);
@@ -1481,8 +1474,8 @@ WebPEncodingError VP8LEncodeStream(const WebPConfig* const config,
   // Encode and write the transformed image.
   err = EncodeImageInternal(bw, enc->argb_, &enc->hash_chain_, enc->refs_,
                             enc->current_width_, height, quality, low_effort,
-                            use_cache, &enc->cache_bits_, enc->histo_bits_,
-                            byte_position, &hdr_size, &data_size);
+                            &enc->cache_bits_, enc->histo_bits_, byte_position,
+                            &hdr_size, &data_size);
   if (err != VP8_ENC_OK) goto Error;
 
   if (picture->stats != NULL) {
@@ -1567,7 +1560,7 @@ int VP8LEncodeImage(const WebPConfig* const config,
   if (!WebPReportProgress(picture, 5, &percent)) goto UserAbort;
 
   // Encode main image stream.
-  err = VP8LEncodeStream(config, picture, &bw, 1 /*use_cache*/);
+  err = VP8LEncodeStream(config, picture, &bw);
   if (err != VP8_ENC_OK) goto Error;
 
   // TODO(skal): have a fine-grained progress report in VP8LEncodeStream().

@@ -14,7 +14,6 @@
 // Author: Jyrki Alakuijala (jyrki@google.com)
 // Converted to C by Aleksander Kramarz (akramarz@google.com)
 
-#include <assert.h>
 #include <stdlib.h>
 
 #include "../dsp/lossless.h"
@@ -24,14 +23,42 @@
 #define MIN_DIM_FOR_NEAR_LOSSLESS 64
 #define MAX_LIMIT_BITS             5
 
-// Quantizes the value up or down to a multiple of 1<<bits (or to 255),
-// choosing the closer one, resolving ties using bankers' rounding.
+// Computes quantized pixel value and distance from original value.
+static void GetValAndDistance(int a, int initial, int bits,
+                              int* const val, int* const distance) {
+  const int mask = ~((1 << bits) - 1);
+  *val = (initial & mask) | (initial >> (8 - bits));
+  *distance = 2 * abs(a - *val);
+}
+
+// Clamps the value to range [0, 255].
+static int Clamp8b(int val) {
+  const int min_val = 0;
+  const int max_val = 0xff;
+  return (val < min_val) ? min_val : (val > max_val) ? max_val : val;
+}
+
+// Quantizes values {a, a+(1<<bits), a-(1<<bits)} and returns the nearest one.
 static int FindClosestDiscretized(int a, int bits) {
-  const int mask = (1 << bits) - 1;
-  const int biased = a + (mask >> 1) + ((a >> bits) & 1);
-  assert(bits > 0);
-  if (biased > 0xff) return 0xff;
-  return biased & ~mask;
+  int best_val = a, i;
+  int min_distance = 256;
+
+  for (i = -1; i <= 1; ++i) {
+    int candidate, distance;
+    const int val = Clamp8b(a + i * (1 << bits));
+    GetValAndDistance(a, val, bits, &candidate, &distance);
+    if (i != 0) {
+      ++distance;
+    }
+    // Smallest distance but favor i == 0 over i == -1 and i == 1
+    // since that keeps the overall intensity more constant in the
+    // images.
+    if (distance < min_distance) {
+      min_distance = distance;
+      best_val = candidate;
+    }
+  }
+  return best_val;
 }
 
 // Applies FindClosestDiscretized to all channels of pixel.
@@ -99,12 +126,12 @@ static void NearLossless(int xsize, int ysize, uint32_t* argb,
 
 static int QualityToLimitBits(int quality) {
   // quality mapping:
-  //   0..19 -> 5
-  //  20..39 -> 4
-  //  40..59 -> 3
-  //  60..79 -> 2
-  //  80..99 -> 1
-  //  100    -> 0
+  //  0..19 -> 5
+  //  0..39 -> 4
+  //  0..59 -> 3
+  //  0..79 -> 2
+  //  0..99 -> 1
+  //  100   -> 0
   return MAX_LIMIT_BITS - quality / 20;
 }
 
