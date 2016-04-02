@@ -10,6 +10,6 @@ Pod::Spec.new do |s|
   s.compiler_flags  = '-D_THREAD_SAFE'
   s.requires_arc    = false
   
-  #s.source_files = 'src/dec/*.{h,c},src/demux/*.{h,c},src/dsp/*.{h,c},src/enc/*.{h,c},src/mux/*.{h,c},src/utils/*.{h,c},src/webp/*.{h,c},'
+  s.source_files = 'src/dec/*.{h,c},src/demux/*.{h,c},src/dsp/*.{h,c},src/enc/*.{h,c},src/mux/*.{h,c},src/utils/*.{h,c},src/webp/*.{h,c},'
 
 end
