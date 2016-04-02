@@ -10,35 +10,6 @@ Pod::Spec.new do |s|
   s.compiler_flags  = '-D_THREAD_SAFE'
   s.requires_arc    = false
   
-  #s.source_files = 'src/**/*.{h,c}'
-  #s.source_files = 'src/*'
-
-  s.subspec 'dec' do |ss|
-    ss.source_files = 'dec/*.{h.c}'
-  end
-  
-  s.subspec 'demux' do |ss|
-    ss.source_files = 'demux/*.{h.c}'
-  end
-
-   s.subspec 'dsp' do |ss|
-    ss.source_files = 'dsp/*.{h.c}'
-  end
-
-   s.subspec 'enc' do |ss|
-    ss.source_files = 'enc/*.{h.c}'
-  end
-
-   s.subspec 'mux' do |ss|
-    ss.source_files = 'mux/*.{h.c}'
-  end
-
-   s.subspec 'utils' do |ss|
-    ss.source_files = 'utils/*.{h.c}'
-  end
-
-   s.subspec 'webp' do |ss|
-    ss.source_files = 'webp/*.{h.c}'
-  end
+  #s.source_files = 'src/dec/*.{h,c},src/demux/*.{h,c},src/dsp/*.{h,c},src/enc/*.{h,c},src/mux/*.{h,c},src/utils/*.{h,c},src/webp/*.{h,c},'
 
 end
