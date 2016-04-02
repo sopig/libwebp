@@ -10,6 +10,7 @@ Pod::Spec.new do |s|
   s.compiler_flags  = '-D_THREAD_SAFE'
   s.requires_arc    = false
   
-  s.source_files = 'src/**/*.{h,c}'
+  s.source_files = 'src/*'
+  #s.source_files = 'src/**/*.{h,c}'
   
 end
