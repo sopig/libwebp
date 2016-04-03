@@ -151,6 +151,8 @@ typedef int (*VP8Metric)(const uint8_t* pix, const uint8_t* ref);
 extern VP8Metric VP8SSE16x16, VP8SSE16x8, VP8SSE8x8, VP8SSE4x4;
 typedef int (*VP8WMetric)(const uint8_t* pix, const uint8_t* ref,
                           const uint16_t* const weights);
+// The weights for VP8TDisto4x4 and VP8TDisto16x16 contain a row-major
+// 4 by 4 symmetric matrix.
 extern VP8WMetric VP8TDisto4x4, VP8TDisto16x16;
 
 typedef void (*VP8BlockCopy)(const uint8_t* src, uint8_t* dst);
@@ -212,6 +214,35 @@ extern VP8GetResidualCostFunc VP8GetResidualCost;
 
 // must be called before anything using the above
 void VP8EncDspCostInit(void);
+
+//------------------------------------------------------------------------------
+// SSIM utils
+
+// struct for accumulating statistical moments
+typedef struct {
+  double w;              // sum(w_i) : sum of weights
+  double xm, ym;         // sum(w_i * x_i), sum(w_i * y_i)
+  double xxm, xym, yym;  // sum(w_i * x_i * x_i), etc.
+} VP8DistoStats;
+
+#define VP8_SSIM_KERNEL 3   // total size of the kernel: 2 * VP8_SSIM_KERNEL + 1
+typedef void (*VP8SSIMAccumulateClippedFunc)(const uint8_t* src1, int stride1,
+                                             const uint8_t* src2, int stride2,
+                                             int xo, int yo,  // center position
+                                             int W, int H,    // plane dimension
+                                             VP8DistoStats* const stats);
+
+// This version is called with the guarantee that you can load 8 bytes and
+// 8 rows at offset src1 and src2
+typedef void (*VP8SSIMAccumulateFunc)(const uint8_t* src1, int stride1,
+                                      const uint8_t* src2, int stride2,
+                                      VP8DistoStats* const stats);
+
+extern VP8SSIMAccumulateFunc VP8SSIMAccumulate;         // unclipped / unchecked
+extern VP8SSIMAccumulateClippedFunc VP8SSIMAccumulateClipped;   // with clipping
+
+// must be called before using any of the above directly
+void VP8SSIMDspInit(void);
 
 //------------------------------------------------------------------------------
 // Decoding

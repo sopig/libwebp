@@ -32,7 +32,7 @@ extern "C" {
 // version numbers
 #define DEC_MAJ_VERSION 0
 #define DEC_MIN_VERSION 5
-#define DEC_REV_VERSION 0
+#define DEC_REV_VERSION 1
 
 // YUV-cache parameters. Cache is 32-bytes wide (= one cacheline).
 // Constraints are: We need to store one 16x16 block of luma samples (y),
@@ -306,6 +306,7 @@ int VP8DecodeMB(VP8Decoder* const dec, VP8BitReader* const token_br);
 
 // in alpha.c
 const uint8_t* VP8DecompressAlphaRows(VP8Decoder* const dec,
+                                      const VP8Io* const io,
                                       int row, int num_rows);
 
 //------------------------------------------------------------------------------
