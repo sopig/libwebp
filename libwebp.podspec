@@ -9,7 +9,12 @@ Pod::Spec.new do |s|
 
   s.compiler_flags  = '-D_THREAD_SAFE'
   s.requires_arc    = false
-  
-  s.source_files = 'src/**/*.{h,c}'
+
+
+  s.default_subspec = 'webp'
+
+  s.subspec 'webp' do |webp|
+    webp.source_files = 'src/**/*.{h,c}'
+  end
 
 end
